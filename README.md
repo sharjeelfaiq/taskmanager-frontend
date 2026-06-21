@@ -170,3 +170,29 @@ Add the frontend origin to the backend's `ALLOWED_ORIGINS` value, or set `FRONTE
 ### GitHub avatars do not render
 
 The image configuration permits `https://avatars.githubusercontent.com`. A different avatar hostname must be added to `next.config.ts` before Next.js `Image` will load it.
+
+## Code Review & Architecture Questions
+
+### 1. What steps would you take to secure this web application?
+
+I would treat the Express API as the security boundary because the Next.js client and every REST task endpoint are public. The API already validates task payloads with Joi and object IDs before Mongoose queries; I would add rate limiting, Helmet security headers, request-size limits, and stricter validation for the GitHub username route. CORS would allow only the deployed frontend origins through `ALLOWED_ORIGINS` or `FRONTEND_URL`, while recognizing that CORS is not authentication.
+
+For multi-user use, I would add authentication and enforce task ownership in the service and repository layers. Vercel would hold `MONGODB_URI` and other server-only settings; only the intentionally public `NEXT_PUBLIC_API_URL` belongs in the frontend bundle. Production errors should omit stack traces, logs should exclude secrets, MongoDB access should use a least-privilege database user and network allowlist, and the GitHub Public API proxy should handle rate limits without exposing tokens.
+
+### 2. How would you improve the performance of this application?
+
+I would measure the browser, Next.js server render, Express response time, and MongoDB query time separately. The current task list is small, so React memoization or virtualization would add complexity without evidence. The first useful changes would be adding a MongoDB index that supports the newest-first task query, limiting or paginating `GET /api/tasks`, and avoiding an unconditional database connection attempt for the GitHub route.
+
+On the frontend, I would preserve the Next.js server-rendered initial list, keep mutation state local, and use optimistic updates only with rollback on API failure. If profiling shows unnecessary renders, I would split state by task or stabilize callbacks at that point. Tailwind CSS already produces a small utility stylesheet, and Next.js `Image` handles GitHub avatars. I would also cache successful GitHub Public API responses briefly in the Express layer to reduce latency and unauthenticated rate-limit pressure, then compare production Core Web Vitals and API percentiles before and after each change.
+
+### 3. Why is MongoDB appropriate here, and when would you choose SQL instead?
+
+MongoDB fits this application because each task is a self-contained document with a title, description, completion flag, and Mongoose timestamps. The REST task APIs mostly create, read, update, or delete one document, so the model does not require joins or complex transactions. Mongoose adds a defined schema and validation while retaining MongoDB's document-oriented storage.
+
+I would choose PostgreSQL or another SQL database if the product added users, teams, task assignments, labels, billing, audit records, or reports with strong relationships and cross-record consistency requirements. Foreign keys, joins, and transactional constraints would then make those invariants explicit. MongoDB can model those features, but the decision should follow query patterns and integrity requirements rather than assuming NoSQL is inherently more scalable. In the current scope, MongoDB keeps persistence simple; the GitHub profile data is fetched from the GitHub Public API and is not stored locally.
+
+### 4. How would you deploy and operate this full-stack application?
+
+I would deploy the Next.js frontend and Express backend as separate Vercel projects connected to their respective repositories, with MongoDB hosted by a managed provider. The frontend build receives `NEXT_PUBLIC_API_URL=https://<backend-host>/api`. The backend receives `NODE_ENV=production`, `MONGODB_URI`, and explicit CORS configuration through `ALLOWED_ORIGINS` or `FRONTEND_URL`; `PORT` remains available for non-Vercel hosts. No secret value or MongoDB URI should be committed.
+
+After deployment, I would verify all REST task APIs and the GitHub lookup from the production browser, including CORS preflights and error paths. CI should run linting and production builds before deployment. Operationally, I would add structured request/error monitoring, uptime checks, MongoDB backups and restore tests, dependency updates, and alerts for elevated API errors or GitHub rate-limit failures. Preview deployments should use isolated configuration and must not receive production database credentials unless explicitly required.
