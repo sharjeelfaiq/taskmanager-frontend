@@ -1,125 +1,172 @@
-# Task Manager — Frontend
+# Task Manager Frontend
 
-Next.js + TailwindCSS frontend for the Task Manager application.
+The frontend is a single-page task management interface built with Next.js App Router. It renders the initial task list on the server, hydrates an interactive client-side task manager, and includes a GitHub profile lookup backed by the companion Express API.
 
----
+## Features
+
+- Create tasks with a required title and optional description.
+- Edit task titles and descriptions inline.
+- Mark tasks complete or incomplete.
+- Delete tasks and update the local list immediately after successful requests.
+- Separate pending and completed tasks and display completion totals.
+- Look up public GitHub profiles by username.
+- Display loading, empty, validation, and API error states.
+- Adapt the layout for narrow and wide screens.
+- Follow the operating system's light or dark color preference.
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript 5
-- **Styling:** Tailwind CSS v4
-- **Runtime:** React 19
+| Area                  | Implementation                                             |
+| --------------------- | ---------------------------------------------------------- |
+| Framework and routing | Next.js 16 App Router                                      |
+| UI runtime            | React 19                                                   |
+| Language              | TypeScript with strict type checking                       |
+| Styling               | Tailwind CSS 4 through PostCSS                             |
+| State management      | Local React `useState` state                               |
+| Forms                 | Controlled React inputs                                    |
+| Validation            | Client-side title trimming and required-field check        |
+| API layer             | Typed wrappers around the native Fetch API                 |
+| Images                | Next.js `Image` with GitHub avatar host allowlisting       |
+| Fonts                 | Geist and Geist Mono through `next/font`                   |
+| Linting               | ESLint 9 with Next.js Core Web Vitals and TypeScript rules |
+| Build tool            | Next.js with Turbopack                                     |
+| Package manager       | npm (`package-lock.json`)                                  |
 
----
+There is no external state-management, form, validation, component, chart, table, rich-text, upload, or authentication library in this application. No frontend test script or test suite is currently configured.
 
-## Setup
+## Project Structure
+
+```text
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── favicon.ico
+│   │   ├── globals.css       # Tailwind import, theme variables, dark mode
+│   │   ├── layout.tsx        # Root layout, metadata, and fonts
+│   │   └── page.tsx          # Server-rendered home route and initial fetch
+│   ├── components/
+│   │   ├── GitHubLookup.tsx  # GitHub search form and profile card
+│   │   ├── TaskForm.tsx      # Shared create/edit form
+│   │   ├── TaskItem.tsx      # Task actions and inline editing
+│   │   ├── TaskList.tsx      # Pending/completed list grouping
+│   │   └── TaskManager.tsx   # Client state and task mutations
+│   ├── lib/
+│   │   └── api.ts            # Backend API client
+│   └── types/
+│       └── index.ts          # Task and GitHub response types
+├── .env.example
+├── next.config.ts
+├── postcss.config.mjs
+├── eslint.config.mjs
+├── tsconfig.json
+└── package.json
+```
+
+## Installation
+
+Run these commands from the repository root:
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local   # fill in your values
-npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
-> The backend must be running at `http://localhost:5000` before you start the frontend.
-
----
+The backend must also be installed and running for task data and GitHub lookups to work.
 
 ## Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API base URL | `http://localhost:5000/api` |
+Create `.env.local` from `.env.example` and set the backend API base URL:
 
----
+| Variable              | Required | Description                                       | Local value                 |
+| --------------------- | -------- | ------------------------------------------------- | --------------------------- |
+| `NEXT_PUBLIC_API_URL` | No       | Base URL used by server and client Fetch requests | `http://localhost:5000/api` |
 
-## Features
+When the variable is absent, the code falls back to `http://localhost:5000/api`. The checked-in example contains a production-shaped Vercel backend URL.
 
-- **Add tasks** — title (required) + description (optional)
-- **Edit tasks** — inline edit form, pre-filled with existing values
-- **Delete tasks** — removes with a single click
-- **Toggle completion** — checkbox marks tasks done/undone with visual feedback
-- **Empty state** — friendly prompt when no tasks exist
-- **Error states** — all API errors shown to the user
-- **Loading states** — buttons disable and show feedback during requests
-- **GitHub profile lookup** — search any GitHub username and view their public profile
-- **Responsive** — mobile-first layout, works on all screen sizes
-- **Dark mode** — respects system color scheme
-- **Accessible** — semantic HTML, keyboard navigation, ARIA labels
+## Running Locally
 
----
+Start the backend first, then run:
 
-## Project Structure
-
-```
-src/
-  app/
-    layout.tsx      # root layout, fonts, metadata
-    page.tsx        # server component, fetches initial tasks
-    globals.css     # Tailwind v4 setup
-  components/
-    TaskForm.tsx    # create/edit form
-    TaskItem.tsx    # single task row
-    TaskList.tsx    # list with empty state
-    TaskManager.tsx # stateful orchestrator (client)
-    GitHubLookup.tsx# GitHub search + profile card
-  lib/
-    api.ts          # typed API client
-  types/
-    index.ts        # Task, GitHubProfile interfaces
+```bash
+npm run dev
 ```
 
----
+The Next.js development server is available at `http://localhost:3000` by default.
 
-## GitHub API Integration
+## Available Scripts
 
-The GitHub lookup feature calls the backend at `/api/github/:username`, which proxies to the GitHub public API. The frontend never calls GitHub directly, which means:
+| Command         | Purpose                                                        |
+| --------------- | -------------------------------------------------------------- |
+| `npm run dev`   | Start the Next.js development server                           |
+| `npm run build` | Create an optimized production build and run TypeScript checks |
+| `npm run start` | Serve an existing production build                             |
+| `npm run lint`  | Run ESLint across the frontend                                 |
 
-- No CORS issues
-- GitHub tokens can be added server-side later without frontend changes
-- Error messages (404 not found, 502 unavailable) are standardized before the client sees them
+## Production Build and Deployment
 
-Search any public GitHub username to see their avatar, display name, public repo count, followers, following count, and a direct link to their profile.
+Build and serve the application with the package scripts:
 
----
+```bash
+npm run build
+npm run start
+```
 
-## Code Review & Architecture
+Set `NEXT_PUBLIC_API_URL` before building so browser-side code contains the correct production API URL. The repository does not contain frontend Docker, CI/CD, or provider-specific deployment configuration; deployment requires a host that supports the Next.js production server.
 
-### 1. Securing a Web Application
+## API Communication
 
-Input validation happens on both the client (empty title check, trimming) and the server (Joi schemas). Never trust client input alone. API keys and secrets are server-side only — `NEXT_PUBLIC_` variables are safe for browser consumption because they contain no secrets.
+`src/lib/api.ts` centralizes requests to the backend:
 
-Content Security Policy headers (via Helmet on the backend) reduce XSS surface area. Forms use controlled inputs, avoiding `dangerouslySetInnerHTML`. Dependencies are kept updated to patch known CVEs. In production, the app runs over HTTPS, which prevents man-in-the-middle attacks and session hijacking.
+| Frontend operation    | Request                 |
+| --------------------- | ----------------------- |
+| Load tasks            | `GET /tasks`            |
+| Create a task         | `POST /tasks`           |
+| Edit or toggle a task | `PUT /tasks/:id`        |
+| Delete a task         | `DELETE /tasks/:id`     |
+| Look up a GitHub user | `GET /github/:username` |
 
-Rate limiting on the backend prevents abuse. CORS is restricted to the known frontend origin. For authenticated routes, JWTs with short expiry and `httpOnly` cookie storage (not `localStorage`) prevent token theft.
+The base URL already includes `/api`. JSON mutation requests send `Content-Type: application/json`. Failed responses handled by `apiFetch` are surfaced as errors to the relevant client component.
 
-### 2. How Would You Improve a Slow React Application?
+The home route exports `dynamic = "force-dynamic"`, so the initial task request runs for every page render instead of being statically cached.
 
-First, profile with React DevTools to find unnecessary re-renders. `React.memo` prevents re-rendering components whose props haven't changed. `useCallback` stabilizes handler references passed to memoized children. `useMemo` caches expensive computed values.
+## Authentication
 
-Code split heavy components with `dynamic(() => import(...), { loading: () => <Spinner /> })` — this defers loading until needed. Next.js `<Image>` handles lazy loading, modern formats, and responsive `srcset` automatically.
+The frontend has no sign-in flow, session handling, protected routes, user roles, or authorization state. All available UI operations call public backend endpoints.
 
-For data, React Query or SWR provides stale-while-revalidate caching that eliminates redundant fetches. Server Components (already used here) remove entire data-fetching roundtrips from the client bundle. Finally, `next build --analyze` identifies oversized imports to tree-shake or replace.
+## State Management
 
-### 3. SQL vs NoSQL — When to Use Each
+The server-rendered page supplies `initialTasks` to `TaskManager`. After hydration, `TaskManager` owns task, submission, and error state with React `useState`. Child components receive task data and async mutation callbacks through props. GitHub lookup state is isolated in `GitHubLookup`.
 
-**SQL** (PostgreSQL, MySQL): Use when your data has clear, stable relationships (users → orders → products), when you need ACID transactions across multiple tables (e.g., bank transfers), or when complex queries with JOINs and aggregations are central to the app. The rigid schema enforces data quality at the database level.
+## Architecture
 
-**NoSQL** (MongoDB, DynamoDB, Redis): Use when documents are self-contained and always read together (tasks, blog posts, user profiles), when the schema needs to evolve quickly, or when you need to scale writes horizontally. MongoDB's flexible document model eliminates the ORM impedance mismatch with JSON APIs.
+```mermaid
+flowchart LR
+    Browser[Browser] --> Page[Next.js App Router page]
+    Page -->|server-side GET /api/tasks| API[Express backend]
+    Page --> Manager[TaskManager client component]
+    Manager -->|task mutations| Client[src/lib/api.ts]
+    Lookup[GitHubLookup client component] --> Client
+    Client --> API
+    API --> MongoDB[(MongoDB)]
+    API --> GitHub[GitHub Users API]
+```
 
-This app uses MongoDB because tasks are independent documents with no joins needed, and the schema is likely to evolve (add tags, priority, due dates) without requiring migrations.
+## Responsive Design
 
-### 4. Deploying a Full-Stack App to AWS
+The page uses a centered `max-w-2xl` container with mobile-first spacing. Task and profile layouts use Tailwind responsive modifiers such as `sm:px-6` and `sm:flex-row`. Text wraps within task cards, controls expose focus styles and accessible labels, and system dark mode is applied with `prefers-color-scheme` and Tailwind `dark:` variants.
 
-**Frontend:** Deploy to Vercel — it integrates with GitHub, handles SSR and edge rendering for Next.js, and deploys automatically on push. Set `NEXT_PUBLIC_API_URL` to the production backend URL in the Vercel dashboard.
+## Troubleshooting
 
-**Backend:** Containerize with Docker. Push the image to Amazon ECR. Run on ECS Fargate behind an Application Load Balancer. The ALB terminates TLS (ACM certificate) and routes HTTPS traffic to the container. Store `MONGODB_URI` and other secrets in AWS Secrets Manager, injected as environment variables at runtime.
+### The page shows a backend connection error
 
-**Database:** MongoDB Atlas (hosted on AWS). The Atlas cluster's IP whitelist allows only the ECS tasks' security group. Atlas handles automated backups and replication.
+- Confirm the backend is running and MongoDB is reachable.
+- Confirm `NEXT_PUBLIC_API_URL` includes the backend's `/api` prefix.
+- Restart the development server after changing `.env.local`.
 
-**CI/CD:** GitHub Actions — on merge to `main`, run lint, tests, Docker build, push to ECR, and deploy to ECS via a rolling update. Vercel handles the frontend pipeline automatically.
+### Browser requests are blocked by CORS
 
-**Monitoring:** CloudWatch for ECS metrics and logs. Sentry for application errors on both sides. Alert on error rate and p95 latency.
+Add the frontend origin to the backend's `ALLOWED_ORIGINS` value, or set `FRONTEND_URL` when only one origin is required.
+
+### GitHub avatars do not render
+
+The image configuration permits `https://avatars.githubusercontent.com`. A different avatar hostname must be added to `next.config.ts` before Next.js `Image` will load it.
